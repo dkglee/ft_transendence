@@ -1,7 +1,6 @@
 {% if latest_question_list %}
     <ul>
     {% for question in latest_question_list %}
-    <!-- 이름으로 호출하면 urls.py에서 url을 마음대로 바꾸어도 문제가 없음 -->
         <li><a href="{% url 'polls:detail' question.id %}">{{ question.question_text }}</a></li>
     {% endfor %}
     </ul>
