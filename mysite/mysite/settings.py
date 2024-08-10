@@ -31,7 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    # "transcendence.apps.TranscendenceConfig",
+    "transcendence.apps.TranscendenceConfig",
 	"ChitChat.apps.ChitchatConfig",
 	"polls.apps.PollsConfig",
     'django.contrib.admin',

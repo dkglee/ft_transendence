@@ -11,11 +11,12 @@ from django.contrib.auth.views import LoginView, LogoutView
 #     path("auth/login/", LogoutView.as_view(), name="logout-user"),
 # ]
 
+app_name = "chat"
 urlpatterns = [
     path("", chat_views.chatPage, name="chat-page"),
 
     # authentication section
     path("auth/login/", LoginView.as_view
-         (template_name="chat/loginPage.html", next_page="chat-page"), name="login-user"),
-    path("auth/logout/", LogoutView.as_view(next_page="login-user"), name="logout-user"),
+         (template_name="chat/loginPage.html", next_page="chat:chat-page"), name="login-user"),
+    path("auth/logout/", LogoutView.as_view(next_page="chat:login-user"), name="logout-user"),
 ]
