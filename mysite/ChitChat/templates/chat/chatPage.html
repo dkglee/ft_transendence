@@ -132,10 +132,19 @@
         </div>
         <div class="chat-logout">
             {% if request.user.is_authenticated %}
-            <div style="float: left;font-weight: bold; color: #036358;">{{ request.user|title }} </div>
-            <div style="float: right;"><a href="{% url 'logout-user' %}"><i class="fas fa-sign-out-alt"></i></a>
-            </div>
-            <div style="clear: both;"></div>
+                <div style="float: left; font-weight: bold; color: #036358;">{{ request.user|title }} </div>
+                
+                <!-- 로그아웃 폼 -->
+                <div style="float: right;">
+                    <form id="logout-form" action="{% url 'logout-user' %}" method="POST" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" style="background: none; border: none; padding: 0; cursor: pointer;">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </form>
+                </div>
+        
+                <div style="clear: both;"></div>
             {% endif %}
         </div>
         <div class="chat__item__container" id="id_chat_item_container">

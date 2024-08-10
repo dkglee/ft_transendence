@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    # "transcendence.apps.TranscendenceConfig",
 	"ChitChat.apps.ChitchatConfig",
 	"polls.apps.PollsConfig",
     'django.contrib.admin',
@@ -139,5 +140,5 @@ CHANNEL_LAYERS = {
     }
 }
 
-LOGIN_REDIRECT_URL = "chat-page"
-LOGOUT_REDIRECT_URL = "login-user"
+# LOGIN_REDIRECT_URL = "chat-page"
+# LOGOUT_REDIRECT_URL = "logout-user"
