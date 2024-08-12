@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping Pong Game</title>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const session_id = sessionStorage.getItem('session_id');
+            const websocket_url = sessionStorage.getItem('websocket_url');
+            const websocket_port = sessionStorage.getItem('websocket_port');
+
+            if (session_id && websocket_url && websocket_port) {
+
+                console.log('Session ID:', session_id);
+                console.log('WebSocket URL:', websocket_url);
+                console.log('WebSocket Port:', websocket_port);
+
+                const ws = new WebSocket(`ws://${websocket_url}:${websocket_port}/ws/game/${session_id}/`);
+
+                ws.onopen = function() {
+                    console.log('WebSocket connection established');
+
+                    // 1초마다 메시지를 서버로 전송
+                    setInterval(function() {
+                        ws.send(JSON.stringify({message: "Ping"}));
+                        console.log('Message sent: Ping');
+                    }, 1000); // 1000 밀리초 = 1초
+                };
+
+                ws.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    console.log('Message from server:', data.message);
+
+                    // 받은 메시지를 화면에 표시
+                    const messageContainer = document.getElementById('message-container');
+                    const messageElement = document.createElement('p');
+                    messageElement.textContent = 'Message from server: ' + data.message;
+                    messageContainer.appendChild(messageElement);
+                };
+
+                ws.onclose = function() {
+                    console.log('WebSocket connection closed');
+                };
+            } else {
+                alert('Session information is missing. Redirecting to match page.');
+                window.location.href = "{% url 'pingpong:match' %}";
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>Ping Pong Game</h1>
+    
+    <!-- 받은 메시지를 출력할 컨테이너 -->
+    <div id="message-container"></div>
+    
+    <!-- 게임 관련 컨텐츠를 여기에 추가하세요 -->
+</body>
+</html>

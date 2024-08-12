@@ -1,7 +1,7 @@
-from django.urls import path, include
-from transcendence.consumer import TranscendenceConsumer
+from django.urls import re_path, include
+from transcendence.consumer import GameConsumer
 
 # the empty string routes to TranscendenceConsumer, which manages the chat functionality.
 websocket_urlpatterns = [
-    path("", TranscendenceConsumer.as_asgi()),
+	re_path(r'ws/game/(?P<session_id>\w+)/$', GameConsumer.as_asgi()),
 ]

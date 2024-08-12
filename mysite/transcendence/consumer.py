@@ -1,7 +1,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-class TranscendenceConsumer(AsyncWebsocketConsumer):
+class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.roomGroupName = "group_chat"
         await self.channel_layer.group_add(
@@ -19,18 +19,14 @@ class TranscendenceConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         message = text_data_json["message"]
-        username = text_data_json["username"]
-        time = text_data_json["time"]
+        print(f"Recieved message")
         await self.channel_layer.group_send(
             self.roomGroupName, {
                 "type": "sendMessage",
                 "message": message,
-                "username": username,
-                "time": time
             })
 
     async def sendMessage(self, event):
-        message = event["message"]
-        username = event["username"]
-        time = event["time"]
-        await self.send(text_data=json.dumps({"message": message, "username": username, "time": time}))
+        # message = event["message"]
+        message = "Pong"
+        await self.send(text_data=json.dumps({"message": message}))
