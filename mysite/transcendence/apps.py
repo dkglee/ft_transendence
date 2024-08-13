@@ -1,6 +1,6 @@
 import atexit
 from django.apps import AppConfig
-from django.core.management import call_command
+from transcendence.service import GameServiceSingleton
 
 class TranscendenceConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
@@ -10,9 +10,15 @@ class TranscendenceConfig(AppConfig):
         # Django 앱이 시작될 때 startgameservice 커맨드를 호출합니다.
         atexit.register(self.cleanup_db)
         try:
-            call_command('startgameservice')
+            # Singleton 인스턴스를 통해 session_queues를 초기화
+            service_instance = GameServiceSingleton()
+            self.session_queues = service_instance.get_session_queues()
+
+            # self.session_queues를 Django의 메인 settings 객체에 추가 (전역적으로 접근 가능)
+            from django.conf import settings
+            settings.SESSION_QUEUES = self.session_queues
+
         except Exception as e:
-            # 에러 핸들링을 추가할 수 있습니다.
             print(f"Error starting game service: {e}")
 
     def cleanup_db(self):

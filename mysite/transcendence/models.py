@@ -3,8 +3,8 @@ from django.db import models
 # Create your models here.
 class GameSession(models.Model):
 	session_id = models.CharField(max_length=100, unique=True)
-	websockets_url = models.URLField()
-	websockets_port = models.IntegerField()
+	websocket_url = models.URLField()
+	websocket_port = models.IntegerField()
 	is_active = models.BooleanField(default=False)
 	players = models.ManyToManyField('Player', related_name='game_sessions')
 

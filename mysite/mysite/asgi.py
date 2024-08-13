@@ -14,6 +14,6 @@ application = ProtocolTypeRouter(
             URLRouter(
                 ChitChat.routing.websocket_urlpatterns + transcendence.routing.websocket_urlpatterns
             )
-        )
+        ),
     }
 )

@@ -31,8 +31,8 @@ def check_for_available_session():
 		# 세션이 있을 경우
 		return {
 			"session_id": available_session.session_id,
-			"websocket_url": available_session.websockets_url,
-			"websocket_port": available_session.websockets_port
+			"websocket_url": available_session.websocket_url,
+			"websocket_port": available_session.websocket_port
 		}
 	else:
 		# 세션이 없을 경우
