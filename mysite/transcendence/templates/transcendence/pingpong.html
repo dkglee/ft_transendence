@@ -21,6 +21,9 @@
                 ws.onopen = function() {
                     console.log('WebSocket connection established');
 
+                    let handshake = "player1";
+                    ws.send(JSON.stringify({ "handshake": handshake }));
+
                     // 1초마다 메시지를 서버로 전송
                     setInterval(function() {
                         ws.send(JSON.stringify({message: "Ping"}));
