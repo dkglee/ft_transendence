@@ -4,6 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ping Pong Game</title>
+    <style>
+        /* 게임 패널의 스타일 */
+        #game-panel {
+            position: relative;
+            width: 100px;
+            height: 20px;
+            background-color: blue;
+            margin-top: 20px;
+        }
+
+        /* 패널을 움직일 수 있는 컨테이너 */
+        #game-container {
+            width: 100%;
+            height: 100px;
+            background-color: lightgrey;
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const session_id = sessionStorage.getItem('session_id');
@@ -24,11 +43,11 @@
                     let handshake = "player1";
                     ws.send(JSON.stringify({ "handshake": handshake }));
 
-                    // 1초마다 메시지를 서버로 전송
-                    setInterval(function() {
-                        ws.send(JSON.stringify({message: "Ping"}));
-                        console.log('Message sent: Ping');
-                    }, 1000); // 1000 밀리초 = 1초
+                    // // 1초마다 메시지를 서버로 전송
+                    // setInterval(function() {
+                    //     ws.send(JSON.stringify({message: "Ping"}));
+                    //     console.log('Message sent: Ping');
+                    // }, 1000); // 1000 밀리초 = 1초
                 };
 
                 ws.onmessage = function(event) {
@@ -45,6 +64,32 @@
                 ws.onclose = function() {
                     console.log('WebSocket connection closed');
                 };
+
+                // 게임 패널을 움직이기 위한 코드
+                const panel = document.getElementById('game-panel');
+                let panelPosition = 0;
+                const step = 10; // 패널이 움직이는 단위
+
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'A' || event.key === 'a') {
+                        // 'A' 키가 눌렸을 때 패널을 왼쪽으로 이동
+                        if (panelPosition > 0) {
+                            panelPosition -= step;
+                            panel.style.left = panelPosition + 'px';
+                        }
+                        // 서버로 정보 전송
+                        ws.send(JSON.stringify({username: "player1", action: "l", position: panelPosition}));
+                    } else if (event.key === 'D' || event.key === 'd') {
+                        // 'D' 키가 눌렸을 때 패널을 오른쪽으로 이동
+                        if (panelPosition < document.getElementById('game-container').offsetWidth - panel.offsetWidth) {
+                            panelPosition += step;
+                            panel.style.left = panelPosition + 'px';
+                        }
+                        // 서버로 정보 전송
+                        ws.send(JSON.stringify({username: "player1", action: "r", position: panelPosition}));
+                    }
+                });
+
             } else {
                 alert('Session information is missing. Redirecting to match page.');
                 window.location.href = "{% url 'pingpong:match' %}";
@@ -55,6 +100,11 @@
 <body>
     <h1>Ping Pong Game</h1>
     
+    <!-- 게임 패널과 컨테이너 -->
+    <div id="game-container">
+        <div id="game-panel"></div>
+    </div>
+
     <!-- 받은 메시지를 출력할 컨테이너 -->
     <div id="message-container"></div>
     

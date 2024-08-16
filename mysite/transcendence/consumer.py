@@ -12,6 +12,7 @@ def SetSessionActive(session_id, handshake):
     if session:
         # 예제에서는 handshake로 처리하지만 실제로는 다른 로직이 있을 수 있습니다.
         session.is_active = True
+        session.players.add(Player.objects.create(username=handshake))
         session.save()
     else:
         print(f"Session {session_id} does not exist")
@@ -28,6 +29,14 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.session_id = self.scope["url_route"]["kwargs"]["session_id"]
         self.roomGroupName = f"game_{self.session_id}"
+        
+        mutex = getattr(settings, 'GLOBAL_MUTEX', None)
+        if mutex is None:
+            print("Global mutex not found")
+            await self.close()
+            return
+        else:
+           self.mutex = mutex[self.session_id] 
 
         session_queues = getattr(settings, 'SESSION_QUEUES', None)
         if session_queues:
@@ -75,16 +84,20 @@ class GameConsumer(AsyncWebsocketConsumer):
 
         # 그 외의 메시지 처리 (예: username 기반 메시지)
         else:
-            message = text_data_json.get("message", "")
-            print(f"Received message: {message} for session: {self.session_id}")
+            # message = text_data_json.get("message", "")
+            # print(f"Received message: {message} for session: {self.session_id}")
+            # print(f"Received message: {text_data} for session: {self.session_id}")
+
             
             if self.queue:
-                self.queue.put(message)
+                with self.mutex:
+                # 0 -> read, 1 -> write
+                    self.queue[1].put(text_data)
 
             await self.channel_layer.group_send(
                 self.roomGroupName, {
                     "type": "sendMessage",
-                    "message": message,
+                    # "message": message,
                 })
             
     async def sendMessage(self, event):
@@ -101,7 +114,7 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     async def start_game_after_timeout(self):
         try:
-            await asyncio.sleep(20)
+            await asyncio.sleep(5)
             print(f"Session {self.session_id} did not fill up in time. Starting game...")
             await self.start_game(self.session_id)
         except asyncio.CancelledError:
