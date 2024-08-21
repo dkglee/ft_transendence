@@ -88,7 +88,7 @@ class GameServiceSingleton:
             print(f"Starting game in session {session_id}")
         else:
             print(f"Session {session_id} not found")
-
+    
     def set_match(self, session_id, match):
         try:
             GameSession = apps.get_model('transcendence', 'GameSession')
@@ -96,13 +96,19 @@ class GameServiceSingleton:
             session = GameSession.objects.get(session_id=session_id)
             if session.players.count() >= 2:
                 match.append(GameLogic())
+                match.back().matchId = 'A'
+                match.back().attach(self)
                 if (session.players.count() == 2):
                     return None
                 match.append(GameLogic())
+                match.back().matchId = 'B'
+                match.back().attach(self)
                 if (session.players.count() == 3):
                     match[1].isComputer = True
             else:
                 match.append(GameLogic())
+                match.back().matchId = 'A'
+                match.back().attach(self)
                 match[0].isComputer = True
         except Exception as e:
             print(f"Error occurred: {e}")
@@ -156,3 +162,9 @@ class GameServiceSingleton:
         # 게임 로직 업데이트
         for game in match:
             game.update()
+
+    # 게임이 끝났을 때 호출되는 함수
+    def update(self, matchId):
+        print(f"Game over: {matchId}")
+        # 게임이 끝났을 때 처리 DB에 저장 혹은 결승전 매칭
+        

@@ -1,7 +1,25 @@
 import math
 import random
 
-class GameLogic:
+class Subject:
+	def __init__(self):
+		self._observers = []
+
+	def attach(self, observer):
+		if observer not in self._observers:
+			self._observers.append(observer)
+
+	def detach(self, observer):
+		try:
+			self._observers.remove(observer)
+		except ValueError:
+			pass
+
+	def notify(self, value=None):
+		for observer in self._observers:
+			observer.update()
+
+class GameLogic(Subject):
 	def __init__(self):
 		self.player = [self.Paddle(350, 580, 100, 10), self.Paddle(350, 10, 100, 10)]
 		self.ball = self.Ball(400, 300, 10, 5, 5, 5)
@@ -9,6 +27,7 @@ class GameLogic:
 		self.canvas_height = 600
 		self.player_score = [0, 0]  # 각 플레이어의 점수를 저장하는 배열
 		self.isComputer = False  # 두 번째 플레이어가 컴퓨터인지 여부
+		self.matchId = None
 
 	class Paddle:
 		def __init__(self, x, y, width, height):
@@ -110,6 +129,9 @@ class GameLogic:
 		elif self.ball.y + self.ball.radius > self.canvas_height:
 			self.player_score[1] += 1  # 위쪽 플레이어 점수
 			self.reset_ball()
+
+		if self.player_score[0] == 5 or self.player_score[1] == 5:
+			self.notify(self.matchId)
 
 		# 플레이어의 패들 이동
 		for i in range(2):
