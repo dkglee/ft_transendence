@@ -1,4 +1,5 @@
 import math
+import random
 
 class GameLogic:
 	def __init__(self):
@@ -26,7 +27,47 @@ class GameLogic:
 			self.velocityX = velocityX
 			self.velocityY = velocityY
 
+	def ray_intersects_rectangle(self, ray_origin, ray_end, rect):
+		tmin = (rect['left'] - ray_origin[0]) / (ray_end[0] - ray_origin[0])
+		tmax = (rect['right'] - ray_origin[0]) / (ray_end[0] - ray_origin[0])
+
+		if tmin > tmax:
+			tmin, tmax = tmax, tmin
+
+		tymin = (rect['top'] - ray_origin[1]) / (ray_end[1] - ray_origin[1])
+		tymax = (rect['bottom'] - ray_origin[1]) / (ray_end[1] - ray_origin[1])
+
+		if tymin > tymax:
+			tymin, tymax = tymax, tymin
+
+		if tmin > tymax or tymin > tmax:
+			return False
+		
+		if tymin > tmin:
+			tmin = tymin
+		if tymax < tmax:
+			tmax = tymax
+		
+		return tmin >= 0 and tmin <= 1
+
+	def collision_ray_casting(self, ball, paddle):
+		ballPrev = [ball.prevX, ball.prevY]
+		ballPos = [ball.x, ball.y]
+
+		paddleRect = {
+			'left': paddle.x - ball.radius,
+			'right': paddle.x + paddle.width + ball.radius,
+			'top': paddle.y - ball.radius,
+			'bottom': paddle.y + paddle.height + ball.radius
+		}
+
+		return self.ray_intersects_rectangle(ballPrev, ballPos, paddleRect)
+
 	def update(self):
+		# 공의 현재 위치
+		self.ball.prevX = self.ball.x
+		self.ball.prevY = self.ball.y
+
 		# 공의 위치 업데이트
 		self.ball.x += self.ball.velocityX
 		self.ball.y += self.ball.velocityY
@@ -36,28 +77,31 @@ class GameLogic:
 			self.player[1].x += (self.ball.x - (self.player[1].x + self.player[1].width / 2)) * 0.1
 
 		# 공이 좌우 벽에 충돌하면 속도 반전
-		if self.ball.x + self.ball.radius > self.canvas_width or self.ball.x - self.ball.radius < 0:
+		if self.ball.x + self.ball.radius > self.canvas_width:
 			self.ball.velocityX = -self.ball.velocityX
+			self.ball.x = self.canvas_width - self.ball.radius
+		elif self.ball.x - self.ball.radius < 0:
+			self.ball.velocityX = -self.ball.velocityX
+			self.ball.x = self.ball.radius
 
 		# 충돌 검사
-		def collision(ball, paddle):
-			return (paddle.x < ball.x < paddle.x + paddle.width and
-					paddle.y < ball.y < paddle.y + paddle.height)
-
 		player_index = 0 if self.ball.y > self.canvas_height / 2 else 1
 		player_paddle = self.player[player_index]
 
-		if collision(self.ball, player_paddle):
+		if self.collision_ray_casting(self.ball, player_paddle):
 			collide_point = self.ball.x - (player_paddle.x + player_paddle.width / 2)
 			collide_point = collide_point / (player_paddle.width / 2)
 
 			angle_rad = (math.pi / 4) * collide_point
 
-			direction = 1 if self.ball.y > self.canvas_height / 2 else -1
+			direction = -1 if self.ball.y > self.canvas_height / 2 else 1
 			self.ball.velocityY = direction * self.ball.speed * math.cos(angle_rad)
 			self.ball.velocityX = self.ball.speed * math.sin(angle_rad)
 
 			self.ball.speed += 0.5
+
+			self.ball.x = self.ball.prevX
+			self.ball.y = self.ball.prevY
 
 		# 점수 계산 및 공 리셋
 		if self.ball.y - self.ball.radius < 0:
@@ -81,4 +125,5 @@ class GameLogic:
 		self.ball.x = self.canvas_width / 2
 		self.ball.y = self.canvas_height / 2
 		self.ball.speed = 5
-		self.ball.velocityY = -self.ball.velocityY
+		self.ball.velocity_x = 5 * (1 if random.random() > 0.5 else -1)
+		self.ball.velocity_y = 5 * (1 if random.random() > 0.5 else -1)
