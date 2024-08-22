@@ -7,6 +7,8 @@ from django.apps import apps  # Django 앱을 지연 초기화하는데 사용
 from .logics import GameLogic
 from threading import Event
 from threading import Lock
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 import time
 
 class MatchMetaData:
@@ -114,16 +116,26 @@ class GameService:
             except queue.Empty:
                 break
         
-        # print(f"Player DX: {self.matches['A'].GameLogic.player[0].dx}")
-
         # 게임 로직 업데이트
         try:
             for game in self.matches.values():
                 # print("hi")
                 game.GameLogic.update()
                 # print("bye")
+            self.send_update_message(session_id)
         except Exception as e:
             print(f"Error occurred: {e}")
+
+    def send_update_message(self, session_id):
+        # 게임 상태를 클라이언트에게 전송하는 로직
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"game_{session_id}",
+            {
+                "type": "sendMessage",
+                "message": "update"
+            }
+        )
 
     # 게임이 끝났을 때 호출되는 함수
     def update(self, matchId, winner):
