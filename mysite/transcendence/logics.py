@@ -15,12 +15,15 @@ class Subject:
 		except ValueError:
 			pass
 
-	def notify(self, value=None):
+	def notify(self, value, winner):
+		print(f"Notifying observers: {value} {self._observers}")
 		for observer in self._observers:
-			observer.update()
+			observer.update(value, winner)
+		print("Notifying observers1")
 
 class GameLogic(Subject):
 	def __init__(self):
+		super().__init__()
 		self.player = [self.Paddle(350, 580, 100, 10), self.Paddle(350, 10, 100, 10)]
 		self.ball = self.Ball(400, 300, 10, 5, 5, 5)
 		self.canvas_width = 800
@@ -130,8 +133,12 @@ class GameLogic(Subject):
 			self.player_score[1] += 1  # 위쪽 플레이어 점수
 			self.reset_ball()
 
-		if self.player_score[0] == 5 or self.player_score[1] == 5:
-			self.notify(self.matchId)
+		if self.player_score[0] >= 5 or self.player_score[1] >= 5:
+			print("Game Over")
+			if self.player_score[0] > self.player_score[1]:
+				self.notify(self.matchId, 0)
+			else:
+				self.notify(self.matchId, 1)
 
 		# 플레이어의 패들 이동
 		for i in range(2):

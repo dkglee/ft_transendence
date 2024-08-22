@@ -23,6 +23,8 @@ class TranscendenceConfig(AppConfig):
 
     def cleanup_db(self):
         # Django 앱이 종료될 때 호출되는 함수입니다.
-        from transcendence.models import GameSession
+        from transcendence.models import GameSession, Player
         print("Cleaning up database...")
         GameSession.objects.all().delete()
+        Player.objects.filter(game_sessions__isnull=True).delete()
+        

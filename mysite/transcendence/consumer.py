@@ -85,13 +85,13 @@ class GameConsumer(AsyncWebsocketConsumer):
         # 그 외의 메시지 처리 (예: username 기반 메시지)
         else:
             # message = text_data_json.get("message", "")
-            # print(f"Received message: {message} for session: {self.session_id}")
-            # print(f"Received message: {text_data} for session: {self.session_id}")
+            # print(f"Received message: {message} in consumer.py: {self.session_id}")
+            print(f"Received message: {text_data} for session: {self.session_id}")
 
-            
             if self.queue:
                 with self.mutex:
                 # 0 -> read, 1 -> write
+                    print(f"queue0: {self.queue[0].qsize()}, queue1: {self.queue[1].qsize()}")
                     self.queue[1].put(text_data)
 
             await self.channel_layer.group_send(
