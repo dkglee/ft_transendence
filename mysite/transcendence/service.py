@@ -1,5 +1,6 @@
 import json
 import queue
+import time
 from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
 from queue import Queue
@@ -10,7 +11,7 @@ from threading import Lock
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from .models import GameSession, Player
-import time
+from .db_worker import DBWorker
 
 class MatchMetaData:
     def __init__(self):
@@ -29,7 +30,7 @@ class GameService:
         self.history = []
         self.session_done = False
     
-    def run(self, session_id, double_queue, mutex):
+    def run(self, session_id, double_queue, mutex, db_worker):
         while not self.session_done:
             if not self.matches:
                 print("Setting match")
@@ -39,7 +40,7 @@ class GameService:
                 time.sleep(0.05)
         print("Session ended")
         # 세션 종료 후에는 모든 게임 정보를 DB에 저장함
-        self.save_game_history()
+        self.save_game_history(db_worker)
         self.session_db_flush(session_id)
 
     def session_db_flush(self, session_id):
@@ -185,21 +186,11 @@ class GameService:
         if (matchId == 'F'):
             self.session_done = True
     
-    def save_game_history(self):
+    def save_game_history(self, db_worker):
         # 게임의 히스토리를 DB에 저장하는 로직
         # TODO: GameHistory 모델을 만들어야 함
-        try:
-            GameHistory = apps.get_model('transcendence', 'GameHistory')
-            for match in self.history:
-                game_history = GameHistory(
-                    match_id=match.id,
-                    player1=match.player[0],
-                    player2=match.player[1],
-                    winner=match.winner
-                )
-                game_history.save()
-        except Exception as e:
-            print(f"Error occurred: {e}")
+        db_worker.match_history.put(self.history)
+
 
 class GameServiceSingleton:
     _instance = None
@@ -217,6 +208,7 @@ class GameServiceSingleton:
             self.events = {}
             self.mutex = {}
             self.session_queues = {}
+            self.db_worker = DBWorker()
             self._initialized = True
 
     def start_service(self):
@@ -263,7 +255,7 @@ class GameServiceSingleton:
             self.events[session_id].wait()
             print("Game started")
             Service = GameService()
-            Service.run(session_id, double_queue, mutex)
+            Service.run(session_id, double_queue, mutex, self.db_worker)
             self.events[session_id].clear()
 
     def get_session_queues(self):
