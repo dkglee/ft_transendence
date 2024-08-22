@@ -26,18 +26,44 @@ def SetSessionActive(session_id, handshake):
 class GameConsumer(AsyncWebsocketConsumer):
     session_timers = {}
 
+    async def IsUserInSession(self, user):
+        session = GameSession.objects.filter(session_id=self.session_id).first()
+        if session:
+            if session.players.filter(username=user.username).exists():
+                player = Player.objects.filter(username=user.username).first()
+                session.players_connected.add(player)
+                session.save()
+                return True
+        else:
+            return False
+
+    async def remove_user_from_session(self, user):
+        session = GameSession.objects.filter(session_id=self.session_id).first()
+        if session:
+            if session.players_connected.filter(username=user.username).exists():
+                player = Player.objects.filter(username=user.username).first()
+                session.players_connected.remove(player)
+                session.save()
+
     async def connect(self):
+        # jwt token을 통해 사용자를 인증합니다. #
+        # user = self.scope["user"]
+        # if user.is_anonymous:
+        #     await self.close()
+
         self.session_id = self.scope["url_route"]["kwargs"]["session_id"]
         self.roomGroupName = f"game_{self.session_id}"
-        
+
+        # 게임 세션(Thread)과 연결되어 있는 Mutex를 가져옵니다.        
         mutex = getattr(settings, 'GLOBAL_MUTEX', None)
         if mutex is None:
             print("Global mutex not found")
             await self.close()
             return
         else:
-           self.mutex = mutex[self.session_id] 
+           self.mutex = mutex[self.session_id]
 
+        # 게임 세션과 연결되어 있는 Double Buffer(Read, Write)를 가져옵니다
         session_queues = getattr(settings, 'SESSION_QUEUES', None)
         if session_queues:
             self.queue = session_queues.get(self.session_id)
@@ -47,6 +73,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         if self.queue is None:
             print(f"Session {self.session_id} does not exist")
             await self.close()
+            return
         else:
             await self.channel_layer.group_add(
                 self.roomGroupName,
@@ -54,16 +81,30 @@ class GameConsumer(AsyncWebsocketConsumer):
             )
             await self.accept()
 
+        # JWT 토큰 구현 이후 #
+        # if self.IsUserInSession(user):
+        #     await self.channel_layer.group_add(
+        #         self.roomGroupName,
+        #         self.channel_name
+        #     )
+        #     await self.accept()
+        # else:
+        #     await self.close()
+
+
     async def disconnect(self, close_code):
+        user = self.scope["user"]
         await self.channel_layer.group_discard(
             self.roomGroupName,
             self.channel_name
         )
+        # JWT 토큰 구현 이후 #
+        # self.remove_user_from_session(user)
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         
-        # 첫 메시지로 handshake 받기
+        # 첫 메시지로 handshake 받기 : JWT 토큰 구현 이후에는 불필요 #
         if "handshake" in text_data_json:
             handshake = text_data_json["handshake"]
 

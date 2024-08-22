@@ -7,6 +7,7 @@ class GameSession(models.Model):
 	websocket_port = models.IntegerField()
 	is_active = models.BooleanField(default=False)
 	players = models.ManyToManyField('Player', related_name='game_sessions')
+	players_connected = models.ManyToManyField('Player', related_name='game_sessions_connected')
 
 	def __str__(self):
 		return f"Session {self.session_id} - Active: {self.is_active} - Players: {self.players.all()}"

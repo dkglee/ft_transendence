@@ -9,6 +9,7 @@ from threading import Event
 from threading import Lock
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from .models import GameSession, Player
 import time
 
 class MatchMetaData:
@@ -39,6 +40,21 @@ class GameService:
         print("Session ended")
         # 세션 종료 후에는 모든 게임 정보를 DB에 저장함
         self.save_game_history()
+        self.session_db_flush(session_id)
+
+    def session_db_flush(self, session_id):
+        try:
+            session = GameSession.objects.filter(session_id=session_id).first()
+            if session:
+                session.is_active = False
+                players = session.players.all()
+                for player in players:
+                    player.delete()
+                session.players.clear()
+                session.players_connected.clear()
+                session.save()
+        except Exception as e:
+            print(f"Error occurred: {e}")
 
     def make_match(self, matchId, player1, player2=None):
         match = MatchMetaData()
@@ -233,7 +249,7 @@ class GameServiceSingleton:
                 self.bGameStarted[session_id] = False
                 self.events[session_id] = Event()
                 self.mutex[session_id] = Lock()
-                executor.submit(self.session_thread, session_id, self.session_queues[session_id], websocket_url, websocket_port, self.mutex[session_id])
+                executor.submit(self.session_thread, session_id, self.session_queues[session_id], self.mutex[session_id])
 
             settings.GLOBAL_MUTEX = self.mutex
 
@@ -242,7 +258,7 @@ class GameServiceSingleton:
         except Exception as e:
             print(f"Error starting game service: {e}")
 
-    def session_thread(self, session_id, double_queue, websocket_url, websocket_port, mutex):
+    def session_thread(self, session_id, double_queue, mutex):
         while True:
             self.events[session_id].wait()
             print("Game started")
