@@ -122,18 +122,21 @@ class GameService:
                 # print("hi")
                 game.GameLogic.update()
                 # print("bye")
-            self.send_update_message(session_id)
+                self.send_update_message(session_id, game)
         except Exception as e:
             print(f"Error occurred: {e}")
 
-    def send_update_message(self, session_id):
+    def send_update_message(self, session_id, match):
         # 게임 상태를 클라이언트에게 전송하는 로직
         channel_layer = get_channel_layer()
+
+        message = f"update {match.GameLogic.player[0].x} {match.GameLogic.player[0].y} / {match.GameLogic.player[1].x} {match.GameLogic.player[1].y} / {match.GameLogic.ball.x} {match.GameLogic.ball.y}"
+
         async_to_sync(channel_layer.group_send)(
             f"game_{session_id}",
             {
                 "type": "sendMessage",
-                "message": "update"
+                "message": message
             }
         )
 
@@ -185,6 +188,7 @@ class GameService:
 class GameServiceSingleton:
     _instance = None
     _initialized = False
+    _service_started = False
 
     def __new__(cls):
         if cls._instance is None:
@@ -196,7 +200,7 @@ class GameServiceSingleton:
             self.bGameStarted = {}
             self.events = {}
             self.mutex = {}
-            self.session_queues = self.start_service()
+            self.session_queues = {}
             self._initialized = True
 
     def start_service(self):
@@ -213,7 +217,7 @@ class GameServiceSingleton:
             GameSession.objects.all().delete()
 
             executor = ThreadPoolExecutor(max_workers=num_sessions)
-            session_queues = {}
+            # session_queues = {}
 
             for i in range(num_sessions):
                 session_id = f"session_{i+1}"
@@ -225,15 +229,15 @@ class GameServiceSingleton:
                 )
                 queue_read = Queue()
                 queue_write = Queue()
-                session_queues[session_id] = [queue_read, queue_write]
+                self.session_queues[session_id] = [queue_read, queue_write]
                 self.bGameStarted[session_id] = False
                 self.events[session_id] = Event()
                 self.mutex[session_id] = Lock()
-                executor.submit(self.session_thread, session_id, session_queues[session_id], websocket_url, websocket_port, self.mutex[session_id])
+                executor.submit(self.session_thread, session_id, self.session_queues[session_id], websocket_url, websocket_port, self.mutex[session_id])
 
             settings.GLOBAL_MUTEX = self.mutex
 
-            return session_queues
+            return self.session_queues
         
         except Exception as e:
             print(f"Error starting game service: {e}")

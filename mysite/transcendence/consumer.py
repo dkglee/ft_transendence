@@ -93,7 +93,6 @@ class GameConsumer(AsyncWebsocketConsumer):
                     self.queue[1].put(text_data)
 
     async def sendMessage(self, event):
-        # message = "Pong"
         message = event["message"]
         await self.send(text_data=json.dumps({"message": message}))
 
