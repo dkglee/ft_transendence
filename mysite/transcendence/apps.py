@@ -1,6 +1,5 @@
 import atexit
 from django.apps import AppConfig
-from transcendence.service import GameServiceSingleton
 from django.db.models.signals import post_migrate
 import time
 import threading
@@ -17,24 +16,28 @@ class TranscendenceConfig(AppConfig):
         threading.Thread(target=self.delayed_start_service).start()
     
     def delayed_start_service(self):
-        # 5초 대기
-        time.sleep(5)
+        # 2초 대기
+        time.sleep(2)
         try:
             # Singleton 인스턴스를 통해 session_queues를 초기화
+            from transcendence.service import GameServiceSingleton
             service_instance = GameServiceSingleton()
             self.session_queues = service_instance.start_service()
 
             from django.conf import settings
             settings.SESSION_QUEUES = self.session_queues
 
-            print("Service started after 5 seconds")
+            print("Service started after 2 seconds")
         except Exception as e:
             print(f"Error starting game service: {e}")
 
     def cleanup_db(self):
-        # Django 앱이 종료될 때 호출되는 함수입니다.
-        from transcendence.models import GameSession, Player
-        print("Cleaning up database...")
-        GameSession.objects.all().delete()
-        Player.objects.filter(game_sessions__isnull=True).delete()
-        print("Clean Done")
+        # 데이터베이스 정리
+        try:
+            from transcendence.models import GameSession, Player
+            print("Cleaning up database...")
+            GameSession.objects.all().delete()
+            Player.objects.filter(game_sessions__isnull=True).delete()
+            print("Clean Done")
+        except Exception as e:
+            print(f"Error during cleanup: {e}")

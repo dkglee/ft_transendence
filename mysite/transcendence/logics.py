@@ -149,6 +149,7 @@ class GameLogic(Subject):
 				self.player[i].x = 0
 			if self.player[i].x + self.player[i].width > self.canvas_width:
 				self.player[i].x = self.canvas_width - self.player[i].width
+			self.player[i].dx = 0
 
 	def reset_ball(self):
 		self.ball.x = self.canvas_width / 2

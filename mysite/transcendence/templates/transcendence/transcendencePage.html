@@ -181,6 +181,7 @@
         };
         chatSocket.onmessage = function (e) {
             const data = JSON.parse(e.data);
+
             var messageContainer = document.querySelector("#id_chat_item_container");
             var div = document.createElement("div");
             div.className = (data.username === "{{request.user.username}}") ? "chat-message right" : "chat-message left";

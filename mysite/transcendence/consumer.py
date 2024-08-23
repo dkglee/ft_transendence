@@ -5,6 +5,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from django.conf import settings
 from .models import GameSession, Player
 from .service import GameServiceSingleton
+import time
 
 @sync_to_async
 def SetSessionActive(session_id, handshake):
@@ -25,6 +26,13 @@ def SetSessionActive(session_id, handshake):
 
 class GameConsumer(AsyncWebsocketConsumer):
     session_timers = {}
+    latency_start_time = None
+
+    async def measure_latency(self):
+        while True:
+            self.latency_start_time = time.time()
+            await self.send(text_data=json.dumps({"type": "ping"}))
+            await asyncio.sleep(10)
 
     async def IsUserInSession(self, user):
         session = GameSession.objects.filter(session_id=self.session_id).first()
@@ -75,11 +83,14 @@ class GameConsumer(AsyncWebsocketConsumer):
             await self.close()
             return
         else:
+            # 해당 유저를 채널 그룹에 추가함. JWT 토큰 구현 이후에는 불필요 #
             await self.channel_layer.group_add(
                 self.roomGroupName,
                 self.channel_name
             )
             await self.accept()
+
+        self.ping_task = asyncio.create_task(self.measure_latency())        
 
         # JWT 토큰 구현 이후 #
         # if self.IsUserInSession(user):
@@ -93,6 +104,8 @@ class GameConsumer(AsyncWebsocketConsumer):
 
 
     async def disconnect(self, close_code):
+        if self.ping_task:
+            self.ping_task.cancel()
         user = self.scope["user"]
         await self.channel_layer.group_discard(
             self.roomGroupName,
@@ -104,6 +117,21 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         
+        print(f"Received message: {text_data} for session: {self.session_id}")
+
+        # pong 메시지 처리
+        if "type" in text_data_json and text_data_json["type"] == "pong":
+            if self.latency_start_time:
+                latency = (time.time() - self.latency_start_time)
+
+                Service = GameServiceSingleton()
+                # change player1 to user.username after jwt token implementation
+                Service.set_latency(self.session_id, "player1", latency)
+
+                print(f"Latency: {latency}")
+                self.latency_start_time = None
+            return json.dumps({"type": "pong"})
+
         # 첫 메시지로 handshake 받기 : JWT 토큰 구현 이후에는 불필요 #
         if "handshake" in text_data_json:
             handshake = text_data_json["handshake"]

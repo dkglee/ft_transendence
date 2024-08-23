@@ -1,3 +1,4 @@
+import asyncio
 import json
 import queue
 import time
@@ -28,16 +29,37 @@ class GameService:
         self.match_done = 0
         self.winner_queue = Queue()
         self.history = []
+        self.average_latency = 0
         self.session_done = False
     
-    def run(self, session_id, double_queue, mutex, db_worker):
+
+    def calculate_latency(self, latency):
+        if not latency:  # latency 리스트가 비어있는지 확인
+            self.average_latency = 0
+            print("No latency data available to calculate.")
+            return
+
+        total_latency = 0
+        for pair in latency:
+            total_latency += pair["latency"]
+
+        self.average_latency = total_latency / len(latency)
+        print(f"Calculated Latency: {self.average_latency}")
+        if self.average_latency >= 0.1:
+            self.average_latency = 0.1
+        elif self.average_latency < 0.05:
+            self.average_latency = 0.05
+
+    def run(self, session_id, double_queue, mutex, db_worker, latency):
         while not self.session_done:
+            self.calculate_latency(latency)
+            print("Average Latency: ", self.average_latency)
             if not self.matches:
                 print("Setting match")
                 self.set_match(session_id)
             else:
                 self.update_match(session_id, double_queue, mutex)
-                time.sleep(0.05)
+                time.sleep(self.average_latency)
         print("Session ended")
         # 세션 종료 후에는 모든 게임 정보를 DB에 저장함
         self.save_game_history(db_worker)
@@ -208,6 +230,7 @@ class GameServiceSingleton:
             self.events = {}
             self.mutex = {}
             self.session_queues = {}
+            self.latency = {}
             self.db_worker = DBWorker()
             self._initialized = True
 
@@ -255,7 +278,7 @@ class GameServiceSingleton:
             self.events[session_id].wait()
             print("Game started")
             Service = GameService()
-            Service.run(session_id, double_queue, mutex, self.db_worker)
+            Service.run(session_id, double_queue, mutex, self.db_worker, self.latency[session_id])
             self.events[session_id].clear()
 
     def get_session_queues(self):
@@ -271,3 +294,20 @@ class GameServiceSingleton:
     
     def set_max_match(self, max_match):
         self.max_match = max_match
+
+    def set_latency(self, session_id, username, latency):
+        if session_id not in self.latency:
+            self.latency[session_id] = []
+
+        updated = False
+        for pair in self.latency[session_id]:
+            if pair["username"] == username:
+                pair["latency"] = latency  # 기존 값 업데이트
+                updated = True
+                break
+
+        # username이 기존 리스트에 없으면 새로 추가
+        if not updated:
+            self.latency[session_id].append({"username": username, "latency": latency})
+
+        print(f"Updated Latency for Session {session_id}: {self.latency[session_id]}")

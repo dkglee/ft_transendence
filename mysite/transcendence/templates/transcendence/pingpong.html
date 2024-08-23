@@ -40,7 +40,7 @@
                 ws.onopen = function() {
                     console.log('WebSocket connection established');
 
-                    let handshake = "player1";
+                    let handshake = "{{request.user.username}}";
                     ws.send(JSON.stringify({ "handshake": handshake }));
 
                     // // 1초마다 메시지를 서버로 전송
@@ -52,6 +52,16 @@
 
                 ws.onmessage = function(event) {
                     const data = JSON.parse(event.data);
+
+                    if (data.type == "ping") {
+                        ws.send(JSON.stringify({
+                            type: "pong",
+                            username: "{{request.user.username}}"
+                        }));
+                        console.log('Message from server:', data.type);
+                        return;
+                    }
+
                     console.log('Message from server:', data.message);
 
                     // 받은 메시지를 화면에 표시
