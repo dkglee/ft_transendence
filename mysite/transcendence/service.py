@@ -44,7 +44,7 @@ class GameService:
             total_latency += pair["latency"]
 
         self.average_latency = total_latency / len(latency)
-        print(f"Calculated Latency: {self.average_latency}")
+        # print(f"Calculated Latency: {self.average_latency}")
         if self.average_latency >= 0.1:
             self.average_latency = 0.1
         elif self.average_latency < 0.05:
@@ -53,13 +53,14 @@ class GameService:
     def run(self, session_id, double_queue, mutex, db_worker, latency):
         while not self.session_done:
             self.calculate_latency(latency)
-            print("Average Latency: ", self.average_latency)
+            # print("Average Latency: ", self.average_latency)
             if not self.matches:
                 print("Setting match")
                 self.set_match(session_id)
             else:
                 self.update_match(session_id, double_queue, mutex)
-                time.sleep(self.average_latency)
+                # time.sleep(self.average_latency)
+                time.sleep(2)
         print("Session ended")
         # 세션 종료 후에는 모든 게임 정보를 DB에 저장함
         self.save_game_history(db_worker)
@@ -169,15 +170,29 @@ class GameService:
         # 게임 상태를 클라이언트에게 전송하는 로직
         channel_layer = get_channel_layer()
 
-        message = f"update {match.GameLogic.player[0].x} {match.GameLogic.player[0].y} / {match.GameLogic.player[1].x} {match.GameLogic.player[1].y} / {match.GameLogic.ball.x} {match.GameLogic.ball.y}"
+        for (i, player) in enumerate(match.player):
+            user_channel_name = f"user_{player}"
 
-        async_to_sync(channel_layer.group_send)(
-            f"game_{session_id}",
-            {
-                "type": "sendMessage",
-                "message": message
-            }
-        )
+            print(f"Sending update message to {user_channel_name}")
+
+            message = f"update {match.GameLogic.player[0].x} {match.GameLogic.player[0].y} / {match.GameLogic.player[1].x} {match.GameLogic.player[1].y} / {match.GameLogic.ball.x} {match.GameLogic.ball.y}"
+
+            # async_to_sync(channel_layer.group_send)(
+            #     f"game_{session_id}",
+            #     {
+            #         "type": "sendMessage",
+            #         "message": message
+            #     }
+            # )
+
+            async_to_sync(channel_layer.group_send) (
+                user_channel_name,
+                {
+                    "type": "sendMessage",
+                    "message": message
+                }    
+            )
+
 
     # 게임이 끝났을 때 호출되는 함수
     def update(self, matchId, winner):

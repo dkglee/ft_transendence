@@ -62,6 +62,12 @@ class GameConsumer(AsyncWebsocketConsumer):
         self.session_id = self.scope["url_route"]["kwargs"]["session_id"]
         self.roomGroupName = f"game_{self.session_id}"
 
+        # JWT 토큰 구현 이후에는 불필요 #
+        self.username = self.scope["user"].username
+        self.user_channel_name = f"user_{self.username}"
+
+        print(f"User {self.username} connected to session {self.session_id}")
+
         # 게임 세션(Thread)과 연결되어 있는 Mutex를 가져옵니다.        
         mutex = getattr(settings, 'GLOBAL_MUTEX', None)
         if mutex is None:
@@ -88,6 +94,11 @@ class GameConsumer(AsyncWebsocketConsumer):
                 self.roomGroupName,
                 self.channel_name
             )
+            await self.channel_layer.group_add(
+                self.user_channel_name,
+                self.channel_name
+            )
+            
             await self.accept()
 
         self.ping_task = asyncio.create_task(self.measure_latency())        
@@ -99,6 +110,11 @@ class GameConsumer(AsyncWebsocketConsumer):
         #         self.channel_name
         #     )
         #     await self.accept()
+
+        #     await self.channel_layer.group_add(
+        #             self.user_channel_name,
+        #             self.channel_name
+        #         )
         # else:
         #     await self.close()
 
@@ -111,13 +127,18 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.roomGroupName,
             self.channel_name
         )
+        await self.channel_layer.group_discard(
+            self.user_channel_name,
+            self.channel_name
+        )
+
         # JWT 토큰 구현 이후 #
         # self.remove_user_from_session(user)
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         
-        print(f"Received message: {text_data} for session: {self.session_id}")
+        # print(f"Received message: {text_data} for session: {self.session_id}")
 
         # pong 메시지 처리
         if "type" in text_data_json and text_data_json["type"] == "pong":
@@ -126,7 +147,7 @@ class GameConsumer(AsyncWebsocketConsumer):
 
                 Service = GameServiceSingleton()
                 # change player1 to user.username after jwt token implementation
-                Service.set_latency(self.session_id, "player1", latency)
+                Service.set_latency(self.session_id, self.username, latency)
 
                 print(f"Latency: {latency}")
                 self.latency_start_time = None

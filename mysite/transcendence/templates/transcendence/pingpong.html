@@ -88,7 +88,7 @@
                             panel.style.left = panelPosition + 'px';
                         }
                         // 서버로 정보 전송
-                        ws.send(JSON.stringify({username: "player1", action: "l", position: panelPosition}));
+                        ws.send(JSON.stringify({username: "{{request.user.username}}", action: "l", position: panelPosition}));
                     } else if (event.key === 'D' || event.key === 'd') {
                         // 'D' 키가 눌렸을 때 패널을 오른쪽으로 이동
                         if (panelPosition < document.getElementById('game-container').offsetWidth - panel.offsetWidth) {
@@ -96,7 +96,7 @@
                             panel.style.left = panelPosition + 'px';
                         }
                         // 서버로 정보 전송
-                        ws.send(JSON.stringify({username: "player1", action: "r", position: panelPosition}));
+                        ws.send(JSON.stringify({username: "{{request.user.username}}", action: "r", position: panelPosition}));
                     }
                 });
 
