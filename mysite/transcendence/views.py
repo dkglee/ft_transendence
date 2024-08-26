@@ -1,6 +1,9 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import GameSession
+from rest_framework.views import APIView
+from rest_framework import status
+from .models import GameSession, Match, SessionHistory
+from .serializers import SessionHistorySerializer
 from django.shortcuts import render
 
 # Create your views here.
@@ -43,3 +46,15 @@ def match(request):
 
 def pingpong(request):
 	return render(request, 'transcendence/pingpong.html')
+
+class MatchHistoryView(APIView):
+	def get(self, request, username):
+		# 해당 유저가 player1 또는 player2로 참여한 모든 매치 조회
+		player_matches = Match.objects.filter(player1=username) | Match.objects.filter(player2=username)
+
+		# 해당 매치들이 포함된 모든 SessionHistory 조회
+		session_history = SessionHistory.objects.filter(match__in=player_matches).distinct()
+
+		# 직렬화하여 JSON 응답으로 반환
+		serializer = SessionHistorySerializer(session_history, many=True)
+		return Response(serializer, status=status.HTTP_200_OK)
