@@ -29,21 +29,38 @@
             const websocket_url = sessionStorage.getItem('websocket_url');
             const websocket_port = sessionStorage.getItem('websocket_port');
 
-            if (session_id && websocket_url && websocket_port) {
+            // JWT 토큰을 하드코딩으로 추가
+            const jwt_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJ1c2VyX2VtYWlsIjoibWluamNob0BzdHVkZW50LjQyc2VvdWwua3IiLCJ1c2VybmFtZSI6Im1pbmpjaG8iLCJleHAiOjE3MjQ3MzIyOTZ9.9aQIUP8_2ySEIR_VRSZoJoMrSJiCDhBdstgdEo12fm4";
+
+            // JWT 토큰 해석하여 username 추출
+            function parseJwt(token) {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+
+                return JSON.parse(jsonPayload);
+            }
+
+            const decodedToken = parseJwt(jwt_token);
+            const username = decodedToken.username;
+
+            if (session_id && websocket_url && websocket_port && jwt_token) {
 
                 console.log('Session ID:', session_id);
                 console.log('WebSocket URL:', websocket_url);
                 console.log('WebSocket Port:', websocket_port);
+                console.log('Username:', username);
 
-                const ws = new WebSocket(`ws://${websocket_url}:${websocket_port}/ws/game/${session_id}/`);
+                const ws = new WebSocket(`ws://${websocket_url}:${websocket_port}/ws/game/${session_id}/?token=${jwt_token}`);
 
                 ws.onopen = function() {
                     console.log('WebSocket connection established');
 
-                    let handshake = "{{request.user.username}}";
-                    ws.send(JSON.stringify({ "handshake": handshake }));
+                    // ws.send(JSON.stringify({ "handshake": username }));
 
-                    // // 1초마다 메시지를 서버로 전송
+                    // 1초마다 메시지를 서버로 전송
                     // setInterval(function() {
                     //     ws.send(JSON.stringify({message: "Ping"}));
                     //     console.log('Message sent: Ping');
@@ -56,7 +73,7 @@
                     if (data.type == "ping") {
                         ws.send(JSON.stringify({
                             type: "pong",
-                            username: "{{request.user.username}}"
+                            username: username
                         }));
                         console.log('Message from server:', data.type);
                         return;
@@ -88,7 +105,7 @@
                             panel.style.left = panelPosition + 'px';
                         }
                         // 서버로 정보 전송
-                        ws.send(JSON.stringify({username: "{{request.user.username}}", action: "l", position: panelPosition}));
+                        ws.send(JSON.stringify({username: username, action: "l", position: panelPosition}));
                     } else if (event.key === 'D' || event.key === 'd') {
                         // 'D' 키가 눌렸을 때 패널을 오른쪽으로 이동
                         if (panelPosition < document.getElementById('game-container').offsetWidth - panel.offsetWidth) {
@@ -96,7 +113,7 @@
                             panel.style.left = panelPosition + 'px';
                         }
                         // 서버로 정보 전송
-                        ws.send(JSON.stringify({username: "{{request.user.username}}", action: "r", position: panelPosition}));
+                        ws.send(JSON.stringify({username: username, action: "r", position: panelPosition}));
                     }
                 });
 

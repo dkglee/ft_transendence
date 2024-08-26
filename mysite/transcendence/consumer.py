@@ -7,23 +7,6 @@ from .models import GameSession, Player
 from .service import GameServiceSingleton
 import time
 
-@sync_to_async
-def SetSessionActive(session_id, handshake):
-    session = GameSession.objects.filter(session_id=session_id).first()
-    if session:
-        # 예제에서는 handshake로 처리하지만 실제로는 다른 로직이 있을 수 있습니다.
-        session.is_active = True
-        session.players.add(Player.objects.create(username=handshake))
-        session.save()
-    else:
-        print(f"Session {session_id} does not exist")
-        return False
-    
-    if session.players.count() == 4:
-        return True
-    else:
-        return False
-
 class GameConsumer(AsyncWebsocketConsumer):
     session_timers = {}
     latency_start_time = None
@@ -33,51 +16,96 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.latency_start_time = time.time()
             await self.send(text_data=json.dumps({"type": "ping"}))
             await asyncio.sleep(10)
+    
+    @sync_to_async
+    def get_session(self):
+        return GameSession.objects.filter(session_id=self.session_id).first()
 
-    async def IsUserInSession(self, user):
-        session = GameSession.objects.filter(session_id=self.session_id).first()
+    @sync_to_async
+    def get_player(self, username):
+        return Player.objects.filter(username=username).first()
+
+    @sync_to_async
+    def create_player(self, username):
+        return Player.objects.create(username=username)
+
+    @sync_to_async
+    def session_player_exists(self, session, username):
+        return session.players.filter(username=username).exists()
+
+    @sync_to_async
+    def add_player_to_session(self, session, player):
+        session.players.add(player)
+        session.players_connected.add(player)
+        session.is_active = True
+        session.save()
+
+    async def IsSessionFull(self):
+        session = await self.get_session()
         if session:
-            if session.players.filter(username=user.username).exists():
-                player = Player.objects.filter(username=user.username).first()
-                session.players_connected.add(player)
-                session.save()
+            if await sync_to_async(session.players.count)() == 4:
                 return True
+            else:
+                return False
         else:
             return False
 
+    async def IsUserInSession(self, user):
+        print("IsUserInSession")
+        session = await self.get_session()
+        player = await self.get_player(user.username)
+        
+        if session and player:
+            if not await self.session_player_exists(session, user.username):
+                await self.add_player_to_session(session, player)
+            print("User is in session1")
+            return True
+        else:
+            new_player = await self.create_player(user.username)
+            await self.add_player_to_session(session, new_player)
+            print("User is in session2")
+            return True
+        return True
+    
+        # Final Version #
+            # if session:
+            #     if session.players.filter(username=user.username).exists():
+            #         player = Player.objects.filter(username=user.username).first()
+            #         session.players_connected.add(player)
+            #         session.save()
+            #         return True
+            # else:
+            #     return False
+
     async def remove_user_from_session(self, user):
-        session = GameSession.objects.filter(session_id=self.session_id).first()
+        session = await self.get_session()
         if session:
-            if session.players_connected.filter(username=user.username).exists():
-                player = Player.objects.filter(username=user.username).first()
+            player = await self.get_player(user.username)
+            if player and session.players_connected.filter(username=user.username).exists():
                 session.players_connected.remove(player)
                 session.save()
 
     async def connect(self):
-        # jwt token을 통해 사용자를 인증합니다. #
-        # user = self.scope["user"]
-        # if user.is_anonymous:
-        #     await self.close()
+        user = self.scope["user"]
+        if user.is_anonymous:
+            await self.close()
 
         self.session_id = self.scope["url_route"]["kwargs"]["session_id"]
         self.roomGroupName = f"game_{self.session_id}"
 
-        # JWT 토큰 구현 이후에는 불필요 #
-        self.username = self.scope["user"].username
+        self.username = user.username
         self.user_channel_name = f"user_{self.username}"
 
         print(f"User {self.username} connected to session {self.session_id}")
 
-        # 게임 세션(Thread)과 연결되어 있는 Mutex를 가져옵니다.        
         mutex = getattr(settings, 'GLOBAL_MUTEX', None)
         if mutex is None:
             print("Global mutex not found")
             await self.close()
             return
         else:
-           self.mutex = mutex[self.session_id]
+            self.mutex = mutex[self.session_id]
 
-        # 게임 세션과 연결되어 있는 Double Buffer(Read, Write)를 가져옵니다
         session_queues = getattr(settings, 'SESSION_QUEUES', None)
         if session_queues:
             self.queue = session_queues.get(self.session_id)
@@ -88,8 +116,8 @@ class GameConsumer(AsyncWebsocketConsumer):
             print(f"Session {self.session_id} does not exist")
             await self.close()
             return
-        else:
-            # 해당 유저를 채널 그룹에 추가함. JWT 토큰 구현 이후에는 불필요 #
+
+        if await self.IsUserInSession(user):
             await self.channel_layer.group_add(
                 self.roomGroupName,
                 self.channel_name
@@ -98,69 +126,9 @@ class GameConsumer(AsyncWebsocketConsumer):
                 self.user_channel_name,
                 self.channel_name
             )
-            
             await self.accept()
 
-        self.ping_task = asyncio.create_task(self.measure_latency())        
-
-        # JWT 토큰 구현 이후 #
-        # if self.IsUserInSession(user):
-        #     await self.channel_layer.group_add(
-        #         self.roomGroupName,
-        #         self.channel_name
-        #     )
-        #     await self.accept()
-
-        #     await self.channel_layer.group_add(
-        #             self.user_channel_name,
-        #             self.channel_name
-        #         )
-        # else:
-        #     await self.close()
-
-
-    async def disconnect(self, close_code):
-        if self.ping_task:
-            self.ping_task.cancel()
-        user = self.scope["user"]
-        await self.channel_layer.group_discard(
-            self.roomGroupName,
-            self.channel_name
-        )
-        await self.channel_layer.group_discard(
-            self.user_channel_name,
-            self.channel_name
-        )
-
-        # JWT 토큰 구현 이후 #
-        # self.remove_user_from_session(user)
-
-    async def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        
-        # print(f"Received message: {text_data} for session: {self.session_id}")
-
-        # pong 메시지 처리
-        if "type" in text_data_json and text_data_json["type"] == "pong":
-            if self.latency_start_time:
-                latency = (time.time() - self.latency_start_time)
-
-                Service = GameServiceSingleton()
-                # change player1 to user.username after jwt token implementation
-                Service.set_latency(self.session_id, self.username, latency)
-
-                print(f"Latency: {latency}")
-                self.latency_start_time = None
-            return json.dumps({"type": "pong"})
-
-        # 첫 메시지로 handshake 받기 : JWT 토큰 구현 이후에는 불필요 #
-        if "handshake" in text_data_json:
-            handshake = text_data_json["handshake"]
-
-            print(f"Received handshake: {handshake} for session {self.session_id}")
-
-            bIsFull = await SetSessionActive(self.session_id, handshake)
-            
+            bIsFull = await self.IsSessionFull()
             if bIsFull:
                 print(f"Session {self.session_id} is full. Starting game...")
                 await self.start_game(self.session_id)
@@ -172,13 +140,39 @@ class GameConsumer(AsyncWebsocketConsumer):
                     timer_task = asyncio.create_task(self.start_game_after_timeout())
                     GameConsumer.session_timers[self.session_id] = timer_task
 
-        # 그 외의 메시지 처리 (예: username 기반 메시지)
+            self.ping_task = asyncio.create_task(self.measure_latency())        
         else:
-            print(f"Received message: {text_data} for session: {self.session_id}")
+            await self.close()
 
+    async def disconnect(self, close_code):
+        if hasattr(self, 'ping_task') and self.ping_task:
+            self.ping_task.cancel()
+        user = self.scope["user"]
+        await self.channel_layer.group_discard(
+            self.roomGroupName,
+            self.channel_name
+        )
+        await self.channel_layer.group_discard(
+            self.user_channel_name,
+            self.channel_name
+        )
+
+    async def receive(self, text_data):
+        text_data_json = json.loads(text_data)
+        
+        if "type" in text_data_json and text_data_json["type"] == "pong":
+            if self.latency_start_time:
+                latency = (time.time() - self.latency_start_time)
+
+                Service = GameServiceSingleton()
+                Service.set_latency(self.session_id, self.username, latency)
+
+                print(f"Latency: {latency}")
+                self.latency_start_time = None
+            return json.dumps({"type": "pong"})
+        else:
             if self.queue:
                 with self.mutex:
-                # 0 -> read, 1 -> write
                     print(f"queue0: {self.queue[0].qsize()}, queue1: {self.queue[1].qsize()}")
                     self.queue[1].put(text_data)
 

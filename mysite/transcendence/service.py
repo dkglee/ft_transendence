@@ -59,8 +59,8 @@ class GameService:
                 self.set_match(session_id)
             else:
                 self.update_match(session_id, double_queue, mutex)
-                # time.sleep(self.average_latency)
-                time.sleep(0.5)
+                time.sleep(self.average_latency)
+                # time.sleep(0.1)
         print("Session ended")
         # 세션 종료 후에는 모든 게임 정보를 DB에 저장함
         self.send_session_end_message(session_id)
@@ -130,7 +130,6 @@ class GameService:
         with mutex:
             double_queue[0], double_queue[1] = double_queue[1], double_queue[0]
 
-        # print(f"queue0: {double_queue[0].qsize()}, queue1: {double_queue[1].qsize()}")
         # 0번 큐에서 메시지를 모두 읽어 들이기
         while True:
             try:
@@ -143,8 +142,6 @@ class GameService:
                 # username과 action을 추출
                 username = data_json.get("username")
                 action = data_json.get("action")
-
-                # print(f"Received message1: {data} for session: {session_id} in Thread")
 
                 if username and action:
                     if username in self.player_controller:
@@ -162,9 +159,7 @@ class GameService:
         try:
             for game in self.matches.values():
                 self.send_update_message(session_id, game)
-                # print("hi")
                 game.GameLogic.update()
-                # print("bye")
         except Exception as e:
             print(f"Error occurred3: {e}")
 
@@ -219,8 +214,6 @@ class GameService:
         for (i, player) in enumerate(match.player):
             user_channel_name = f"user_{player}"
 
-            print(f"Sending update message to {user_channel_name}")
-
             async_to_sync(channel_layer.group_send) (
                 user_channel_name,
                 {
@@ -270,8 +263,6 @@ class GameService:
 
         for (i, player) in enumerate(match.player):
             user_channel_name = f"user_{player}"
-
-            print(f"Sending update message to {user_channel_name}")
 
             async_to_sync(channel_layer.group_send) (
                 user_channel_name,

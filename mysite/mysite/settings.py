@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 from threading import Lock
 
@@ -140,6 +141,14 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels.layers.InMemoryChannelLayer"
     }
 }
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # 'transcendence.authentication.JWTAuthentication', 
+    ),
+}
+
+JWT_SECRET = "7c9e12ebe5840ba1b7dab54d82744f9600da8f14acd9986a6d38ea3579a8b616"
 
 # LOGIN_REDIRECT_URL = "chat-page"
 # LOGOUT_REDIRECT_URL = "logout-user"

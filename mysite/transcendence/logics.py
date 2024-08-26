@@ -24,10 +24,11 @@ class Subject:
 class GameLogic(Subject):
 	def __init__(self):
 		super().__init__()
+		self.max_score = 5
 		self.player = [self.Paddle(350, 580, 100, 10), self.Paddle(350, 10, 100, 10)]
 		self.ball = self.Ball(400, 300, 10, 5, 5, 5)
-		self.canvas_width = 800
-		self.canvas_height = 600
+		self.canvas_width = 600
+		self.canvas_height = 800
 		self.player_score = [0, 0]  # 각 플레이어의 점수를 저장하는 배열
 		self.isComputer = False  # 두 번째 플레이어가 컴퓨터인지 여부
 		self.matchId = None
@@ -133,7 +134,7 @@ class GameLogic(Subject):
 			self.player_score[1] += 1  # 위쪽 플레이어 점수
 			self.reset_ball()
 
-		if self.player_score[0] >= 1 or self.player_score[1] >= 1:
+		if self.player_score[0] >= self.max_score or self.player_score[1] >= self.max_score:
 			print("Game Over")
 			if self.player_score[0] > self.player_score[1]:
 				self.notify(self.matchId, 0)
