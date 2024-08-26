@@ -2,6 +2,7 @@ import asyncio
 import json
 import queue
 import time
+import copy
 from concurrent.futures import ThreadPoolExecutor
 from django.conf import settings
 from queue import Queue
@@ -20,6 +21,19 @@ class MatchMetaData:
         self.player = []
         self.GameLogic = None
         self.winner = None
+    
+        def __str__(self):
+            players_str = " vs ".join(self.player) if self.player else "Unknown players"
+            winner_str = f"Winner: {self.winner}" if self.winner else "No winner yet"
+
+            return (
+                f"Match ID: {self.id or 'Unknown ID'}\n"
+                f"Players: {players_str}\n"
+                f"{winner_str}\n"
+            )
+
+        def __repr__(self):
+            return self.__str__()
 
 class GameService:
     def __init__(self):
@@ -331,7 +345,9 @@ class GameService:
     def save_game_history(self, db_worker):
         # 게임의 히스토리를 DB에 저장하는 로직
         # TODO: GameHistory 모델을 만들어야 함
-        db_worker.match_history.put(self.history)
+        copied_history = copy.deepcopy(self.history)
+        db_worker.match_history.put(copied_history)
+        db_worker.event.set()  # DB에 저장하라고 알림
 
 
 class GameServiceSingleton:

@@ -24,7 +24,7 @@ class Subject:
 class GameLogic(Subject):
 	def __init__(self):
 		super().__init__()
-		self.max_score = 5
+		self.max_score = 1
 		self.player = [self.Paddle(350, 580, 100, 10), self.Paddle(350, 10, 100, 10)]
 		self.ball = self.Ball(400, 300, 10, 5, 5, 5)
 		self.canvas_width = 600
@@ -51,12 +51,19 @@ class GameLogic(Subject):
 			self.velocityY = velocityY
 
 	def ray_intersects_rectangle(self, ray_origin, ray_end, rect):
+		dx = ray_end[0] - ray_origin[0]
+		if dx == 0:
+			return False
+		
 		tmin = (rect['left'] - ray_origin[0]) / (ray_end[0] - ray_origin[0])
 		tmax = (rect['right'] - ray_origin[0]) / (ray_end[0] - ray_origin[0])
 
 		if tmin > tmax:
 			tmin, tmax = tmax, tmin
 
+		dy = ray_end[1] - ray_origin[1]
+		if dy == 0:
+			return False
 		tymin = (rect['top'] - ray_origin[1]) / (ray_end[1] - ray_origin[1])
 		tymax = (rect['bottom'] - ray_origin[1]) / (ray_end[1] - ray_origin[1])
 
@@ -125,7 +132,6 @@ class GameLogic(Subject):
 
 			self.ball.x = self.ball.prevX
 			self.ball.y = self.ball.prevY
-
 		# 점수 계산 및 공 리셋
 		if self.ball.y - self.ball.radius < 0:
 			self.player_score[0] += 1  # 아래쪽 플레이어 점수

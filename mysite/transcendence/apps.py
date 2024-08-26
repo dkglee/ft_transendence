@@ -12,12 +12,12 @@ class TranscendenceConfig(AppConfig):
         atexit.register(self.cleanup_db)
         print("Am I Doing Again?")
 
-        # 5초 후에 로직을 실행하는 스레드를 시작
+        # 1초 후에 로직을 실행하는 스레드를 시작
         threading.Thread(target=self.delayed_start_service).start()
     
     def delayed_start_service(self):
-        # 2초 대기
-        time.sleep(2)
+        # 1초 대기
+        time.sleep(1)
         try:
             # Singleton 인스턴스를 통해 session_queues를 초기화
             from transcendence.service import GameServiceSingleton

@@ -57,14 +57,6 @@
 
                 ws.onopen = function() {
                     console.log('WebSocket connection established');
-
-                    // ws.send(JSON.stringify({ "handshake": username }));
-
-                    // 1초마다 메시지를 서버로 전송
-                    // setInterval(function() {
-                    //     ws.send(JSON.stringify({message: "Ping"}));
-                    //     console.log('Message sent: Ping');
-                    // }, 1000); // 1000 밀리초 = 1초
                 };
 
                 ws.onmessage = function(event) {
