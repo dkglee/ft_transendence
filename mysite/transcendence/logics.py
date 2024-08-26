@@ -133,7 +133,7 @@ class GameLogic(Subject):
 			self.player_score[1] += 1  # 위쪽 플레이어 점수
 			self.reset_ball()
 
-		if self.player_score[0] >= 5 or self.player_score[1] >= 5:
+		if self.player_score[0] >= 1 or self.player_score[1] >= 1:
 			print("Game Over")
 			if self.player_score[0] > self.player_score[1]:
 				self.notify(self.matchId, 0)

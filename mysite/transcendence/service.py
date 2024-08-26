@@ -60,9 +60,10 @@ class GameService:
             else:
                 self.update_match(session_id, double_queue, mutex)
                 # time.sleep(self.average_latency)
-                time.sleep(2)
+                time.sleep(0.5)
         print("Session ended")
         # 세션 종료 후에는 모든 게임 정보를 DB에 저장함
+        self.send_session_end_message(session_id)
         self.save_game_history(db_worker)
         self.session_db_flush(session_id)
 
@@ -78,7 +79,7 @@ class GameService:
                 session.players_connected.clear()
                 session.save()
         except Exception as e:
-            print(f"Error occurred: {e}")
+            print(f"Error occurred1: {e}")
 
     def make_match(self, matchId, player1, player2=None):
         match = MatchMetaData()
@@ -94,6 +95,7 @@ class GameService:
             match.GameLogic.isComputer = True
             match.player.append("Computer")
         match.GameLogic.attach(self)
+        self.send_start_message(match)
         return match
 
     def set_match(self, session_id):
@@ -121,7 +123,7 @@ class GameService:
                 self.matches['B'] = match
                 self.match_num += 1
         except Exception as e:
-            print(f"Error occurred: {e}")
+            print(f"Error occurred2: {e}")
 
     def update_match(self, session_id, double_queue, mutex):
         # 0 -> read, 1 -> write
@@ -159,31 +161,65 @@ class GameService:
         # 게임 로직 업데이트
         try:
             for game in self.matches.values():
+                self.send_update_message(session_id, game)
                 # print("hi")
                 game.GameLogic.update()
                 # print("bye")
-                self.send_update_message(session_id, game)
         except Exception as e:
-            print(f"Error occurred: {e}")
+            print(f"Error occurred3: {e}")
 
-    def send_update_message(self, session_id, match):
-        # 게임 상태를 클라이언트에게 전송하는 로직
+    def send_session_end_message(self, session_id):
+        # 세션이 끝났음을 클라이언트에게 알리는 로직
         channel_layer = get_channel_layer()
+
+        message = json.dumps({
+            "event": "session_end"
+        })
+
+        async_to_sync(channel_layer.group_send) (
+            f"game_{session_id}",
+            {
+                "type": "sendMessage",
+                "message": message
+            }
+        )
+
+    def send_start_message(self, match):
+        # 게임이 시작되었다는 메시지를 클라이언트에게 전송하는 로직
+        channel_layer = get_channel_layer()
+
+        players = match.player
+        player1_info = {
+            "username": players[0],
+            "paddle_pos": {
+                "x": match.GameLogic.player[0].x,
+                "y": match.GameLogic.player[0].y
+            },
+            "score": match.GameLogic.player_score[0]
+        }
+
+        player2_info = {
+            "username": players[1],
+            "paddle_pos": {
+                "x": match.GameLogic.player[1].x,
+                "y": match.GameLogic.player[1].y
+            },
+            "score": match.GameLogic.player_score[1]
+        }
+
+        game_state = {
+            "matchId": match.id,
+            "player1": player1_info,
+            "player2": player2_info,
+            "event": "start"
+        }
+
+        message = json.dumps(game_state)
 
         for (i, player) in enumerate(match.player):
             user_channel_name = f"user_{player}"
 
             print(f"Sending update message to {user_channel_name}")
-
-            message = f"update {match.GameLogic.player[0].x} {match.GameLogic.player[0].y} / {match.GameLogic.player[1].x} {match.GameLogic.player[1].y} / {match.GameLogic.ball.x} {match.GameLogic.ball.y}"
-
-            # async_to_sync(channel_layer.group_send)(
-            #     f"game_{session_id}",
-            #     {
-            #         "type": "sendMessage",
-            #         "message": message
-            #     }
-            # )
 
             async_to_sync(channel_layer.group_send) (
                 user_channel_name,
@@ -194,6 +230,83 @@ class GameService:
             )
 
 
+    def send_update_message(self, session_id, match):
+        # 게임 상태를 클라이언트에게 전송하는 로직
+        channel_layer = get_channel_layer()
+
+        players = match.player
+        player1_info = {
+            "username": players[0],
+            "paddle_pos": {
+                "x": match.GameLogic.player[0].x,
+                "y": match.GameLogic.player[0].y
+            },
+            "score": match.GameLogic.player_score[0]
+        }
+
+        player2_info = {
+            "username": players[1],
+            "paddle_pos": {
+                "x": match.GameLogic.player[1].x,
+                "y": match.GameLogic.player[1].y
+            },
+            "score": match.GameLogic.player_score[1]
+        }
+
+        ball_info = {
+            "pos": {
+                "x": match.GameLogic.ball.x,
+                "y": match.GameLogic.ball.y
+            }
+        }
+
+        game_state = {
+            "player1": player1_info,
+            "player2": player2_info,
+            "ball": ball_info
+        }
+
+        message = json.dumps(game_state)
+
+        for (i, player) in enumerate(match.player):
+            user_channel_name = f"user_{player}"
+
+            print(f"Sending update message to {user_channel_name}")
+
+            async_to_sync(channel_layer.group_send) (
+                user_channel_name,
+                {
+                    "type": "sendMessage",
+                    "message": message
+                }    
+            )
+
+    def send_finish_message(self, match, winner):
+        # 게임이 끝났다는 메시지를 클라이언트에게 전송하는 로직
+        channel_layer = get_channel_layer()
+
+        players = match.player
+
+        winner_info = {
+            "matchId": match.id,
+            "winner": players[winner]
+        }
+
+        message = json.dumps(winner_info)
+
+        for (i, player) in enumerate(match.player):
+            user_channel_name = f"user_{player}"
+
+            print(f"Sending finish message to {user_channel_name}")
+
+            async_to_sync(channel_layer.group_send) (
+                user_channel_name,
+                {
+                    "type": "sendMessage",
+                    "message": message
+                }    
+            )
+
     # 게임이 끝났을 때 호출되는 함수
     def update(self, matchId, winner):
         print(f"Match {matchId} ended")
@@ -201,6 +314,7 @@ class GameService:
         self.match_done += 1
         self.winner_queue.put(finished_match.player[winner])
         # 게임이 끝났다는 것을 클라이언트에게 알리는 로직 필요함
+        self.send_finish_message(finished_match, winner)
         
         # 게임의 정보를 기록하는 로직
         finished_match.GameLogic.detach(self)
