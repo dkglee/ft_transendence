@@ -151,7 +151,7 @@ websocket_urlpatterns = [
 * 매치 하나의 상태 정보가 담겨져 있습니다.
 */
 {
-	"matchId": "A",
+  "matchId": "A",
   "player1": {
     "username": "player1_username",
     "paddle_pos": {
