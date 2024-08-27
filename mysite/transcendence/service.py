@@ -279,6 +279,7 @@ class GameService:
         }
 
         game_state = {
+            "matchId": match.id,
             "player1": player1_info,
             "player2": player2_info,
             "ball": ball_info

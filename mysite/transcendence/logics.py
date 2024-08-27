@@ -24,7 +24,7 @@ class Subject:
 class GameLogic(Subject):
 	def __init__(self):
 		super().__init__()
-		self.max_score = 1
+		self.max_score = 5
 		self.player = [self.Paddle(350, 580, 100, 10), self.Paddle(350, 10, 100, 10)]
 		self.ball = self.Ball(400, 300, 10, 5, 5, 5)
 		self.canvas_width = 600
