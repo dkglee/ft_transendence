@@ -78,8 +78,19 @@ class GameService:
         print("Session ended")
         # 세션 종료 후에는 모든 게임 정보를 DB에 저장함
         self.send_session_end_message(session_id)
+        self.close_all_connections(session_id)
         self.save_game_history(db_worker)
         self.session_db_flush(session_id)
+
+    def close_all_connections(self, session_id):
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"game_{session_id}",
+            {
+                "type": "disconnect_message",
+                "close": True
+            }
+        )
 
     def session_db_flush(self, session_id):
         try:

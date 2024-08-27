@@ -144,7 +144,7 @@ CHANNEL_LAYERS = {
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'transcendence.authentication.JWTAuthentication', 
+        # 'transcendence.authentication.JWTAuthentication', 
     ),
 }
 

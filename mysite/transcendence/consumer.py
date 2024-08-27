@@ -51,19 +51,16 @@ class GameConsumer(AsyncWebsocketConsumer):
             return False
 
     async def IsUserInSession(self, user):
-        print("IsUserInSession")
         session = await self.get_session()
         player = await self.get_player(user.username)
         
         if session and player:
             if not await self.session_player_exists(session, user.username):
                 await self.add_player_to_session(session, player)
-            print("User is in session1")
             return True
         else:
             new_player = await self.create_player(user.username)
             await self.add_player_to_session(session, new_player)
-            print("User is in session2")
             return True
         return True
     
@@ -147,7 +144,7 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if hasattr(self, 'ping_task') and self.ping_task:
             self.ping_task.cancel()
-        user = self.scope["user"]
+        # user = self.scope["user"]
         await self.channel_layer.group_discard(
             self.roomGroupName,
             self.channel_name
@@ -156,6 +153,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.user_channel_name,
             self.channel_name
         )
+
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
@@ -198,3 +196,6 @@ class GameConsumer(AsyncWebsocketConsumer):
         finally:
             if self.session_id in GameConsumer.session_timers:
                 del GameConsumer.session_timers[self.session_id]
+
+    async def disconnect_message(self, event):
+        await self.close()
